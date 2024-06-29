@@ -268,14 +268,14 @@ macro_rules! rules_builder {
     };
     (@expr($self:ident) [$fst:tt / $($pat:tt)/+]) => {{
         $self.test_rule(|$self| {
-            let mut result = (|| {
+            let mut result = $self.test_rule(|$self| {
                 $crate::Ok($crate::rules_builder!(@expr($self) $fst))
-            })();
+            });
 
             $(
-                result = result.or_else(|_| {
+                result = result.or_else(|_| $self.test_rule(|$self| {
                     $crate::Ok($crate::rules_builder!(@expr($self) $pat))
-                });
+                }));
             )+
 
             result

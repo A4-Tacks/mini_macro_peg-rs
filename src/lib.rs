@@ -132,11 +132,12 @@ impl<'s> Parser<'s> {
                 Ok(result)
             },
             Err(e @ (pos, expected)) => {
-                if pos > self.max_err_pos {
+                if pos == self.max_err_pos {
+                    self.errors.insert(expected);
+                } else if pos > self.max_err_pos {
                     self.max_err_pos = pos;
                     self.errors.clear();
                 }
-                self.errors.insert(expected);
                 self.src = prev;
                 Err(e)
             },
@@ -200,6 +201,10 @@ impl<'s> Parser<'s> {
 
     pub fn location(&self) -> usize {
         self.init_src.len() - self.src.len()
+    }
+
+    pub fn set_location(&mut self, loc: usize) {
+        self.src = &self.init_src[loc..];
     }
 
     pub fn yes(&mut self, rng: usize) -> Option<&'s str> {
@@ -292,6 +297,14 @@ macro_rules! rules_builder {
             $crate::Ok(())
         })?
     }};
+    (@expr($self:ident) (& $($pat:tt)*)) => {{
+        $self.test_rule(|$self| {
+            let loc = $self.location();
+            $($crate::rules_builder!(@expr($self) $pat);)*
+            $self.set_location(loc);
+            $crate::Ok(())
+        })?
+    }};
     (@expr($self:ident) (%$res:block $($pat:tt)*)) => {{
         $self.test_rule(|$self| {
             $($crate::rules_builder!(@expr($self) $pat);)*
@@ -334,6 +347,18 @@ macro_rules! rules_builder {
                 }
             } else {
                 $crate::Err(::std::stringify!([$pat]))
+            }
+        })?
+    }};
+    (@expr($self:ident) [^$pat:pat]) => {{
+        $self.test(|$self| {
+            if let $crate::Some(ch) = $self.yes_ch() {
+                match ch {
+                    $pat => $crate::Err(::std::stringify!([^ $pat])),
+                    _ => $crate::Ok(ch),
+                }
+            } else {
+                $crate::Err(::std::stringify!([^ $pat]))
             }
         })?
     }};

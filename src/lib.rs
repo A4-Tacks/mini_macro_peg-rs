@@ -26,11 +26,21 @@ impl Display for Error<'_> {
             .unwrap();
         let mut iter = self.set.iter();
 
-        write!(f, "from {line}:{column} expected one of {}",
-            iter.next().copied().unwrap_or("<uninit>"))?;
-        for expect in iter {
-            write!(f, ", {expect}")?;
+        write!(f, "from {line}:{column} expected ")?;
+
+        match self.set.len() {
+            0 => unreachable!(),
+            1 => {
+                write!(f, "{}", self.set.iter().next().unwrap())?;
+            },
+            _ => {
+                write!(f, "one of {}", iter.next().copied().unwrap())?;
+                for expect in iter {
+                    write!(f, ", {expect}")?;
+                }
+            }
         }
+
         Ok(())
     }
 }
